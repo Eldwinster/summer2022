@@ -1,0 +1,180 @@
+#+title: Setup a remote mumble server
+#+author: Eldwinster
+#+created: [2022-07-09 Sat 01:58]
+#+last_modified: [2022-07-10 Sun 23:02]
+#+property: header-args :tangle murmur.ini
+#+auto_tangle: t
+
+* Goals
+Have a running mumble server where you can connect from anywhere.
+
+* Init file
+The following section explain every option that I use in the init file. The
+commentary either come from [[cite:&MurmurIniMumble]] or ~/etc/murmur.ini~.
+
+** Database Configuration
+Path to database. If blank, will search for
+murmur.sqlite in default locations or create it if not found.
+#+begin_src conf
+database=/var/db/murmur/murmur.sqlite
+#+end_src
+
+** RPC Configuration
+*** ice
+If you want to use ZeroC Ice to communicate with Murmur, you need
+to specify the endpoint to use. Since there is no authentication
+with ICE, you should only use it if you trust all the users who have
+shell access to your machine.
+Please see the ICE documentation on how to specify endpoints.
+#+begin_src conf
+ice="tcp -h 127.0.0.1 -p 6502"
+#+end_src
+
+Ice primarily uses local sockets. This means anyone who has a
+user account on your machine can connect to the Ice services.
+You can set a plaintext "secret" on the Ice connection, and
+any script attempting to access must then have this secret
+(as context with name "secret").
+Access is split in read (look only) and write (modify)
+operations. Write access always includes read access,
+unless read is explicitly denied (see note below).
+
+Note that if this is uncommented and with empty content,
+access will be denied.
+#+begin_src conf
+;icesecretread=
+icesecretwrite=
+#+end_src
+** Security
+*** server password
+This setting configures the default password for unregistered users - registered users will not be
+prompted for this password (they will either have their own, or be authenticated by their
+certificate). This setting is usually configured on a per-virtual-server basis, via RPC.
+#+begin_src conf
+serverpassword=test
+#+end_src
+
+*** uname
+On Unix-like OSes, you can start Murmur as root and have it drop privileges to another account such as
+"mumble" or "murmur". The username must already exist on your system, and have write access to the
+Murmur database, logfiles, etc.
+
+This option is ignored if Murmur is not started as root.
+
+#+begin_src conf
+uname=yann
+#+end_src
+*** allowping
+Setting this to false disables responses to the UDP ping sweep that clients will make when the
+connection dialog is open. Note that on publicly listed servers, and on some configured clients, this
+will prevent the server from showing up in the list.
+
+Setting to true exposes the current user count, the maximum user count, and
+the server's maximum bandwidth per client to unauthenticated users. In the
+Mumble client, this information is shown in the Connect dialog.
+#+begin_src conf
+allowping=true
+#+end_src
+** Process Administrative
+*** log file
+Specifies the file Murmur should log to. By default, Murmur
+logs to the file 'murmur.log'. If you leave this field blank
+on Unix-like systems, Murmur will force itself into foreground
+mode which logs to the console.
+#+begin_src conf
+logfile=
+#+end_src
+
+*** welcome text
+Welcome message sent to clients when they connect.
+If the welcome message is set to an empty string,
+no welcome message will be sent to clients.
+#+begin_src conf
+welcometext="<br />Welcome to this server running <b>Murmur</b>.<br />Enjoy your stay!<br />"
+#+end_src
+
+*** welcome text file
+The welcometext can also be read from an external file which might be useful
+if you want to specify a rather lengthy text. If a value for welcometext is
+set, the welcometextfile will not be read.
+#+begin_src conf
+;welcometextfile=
+#+end_src
+
+** Connectivity
+*** ports
+This setting configures the TCP and UDP ports that Murmur will listen on - the default is 64738. If
+the Murmur process is running multiple virtual servers, then this port will be incremented for each
+virtual server by default. You can specify, via RPC, a specific port for each virtual server if you
+wish to override the defaults.
+#+begin_src conf
+port=64738
+#+end_src
+*** sslCert and sslKey
+*** sslPassPhrase
+*** sslCA
+*** sslCiphers
+*** sslDHParams
+*** bandwidth
+You can configure a per-user upper bandwidth limit, in bits per second. This allows you to clamp your
+users down to a sensible setting if you are limited in bandwidth. This does not set a minimum
+bandwidth - the Murmur client will check its own bandwidth setting and the server's bandwidth
+settings, and choose the lower of the two.
+
+The default is 72000, which is 72Kbps. Setting this over about 130000 doesn't really do anything. Note
+that this is per user.
+#+begin_src conf
+bandwidth=558000
+#+end_src
+
+** Users and Channels
+*** users
+Maximum number of concurrent clients allowed.
+#+begin_src conf
+users=100
+#+end_src
+
+*** message limit and message bure
+These two settings allow to configure the per-user rate limiter for some command messages sent from
+the client to the server. The messageburst setting specifies an amount of messages which are allowed
+in short bursts. The messagelimit setting specifies the number of messages per second allowed over a
+longer period. If a user hits the rate limit, their packages are then ignored for some time. Both of
+these settings have a minimum of 1 as setting either to 0 could render the server unusable.
+#+begin_src conf
+messageburst=5
+messagelimit=1
+#+end_src
+These two settings allow to configure the per-user rate limiter for some
+command messages sent from the client to the server. The messageburst setting
+specifies an amount of messages which are allowed in short bursts. The
+messagelimit setting specifies the number of messages per second allowed over
+a longer period. If a user hits the rate limit, his packages are then ignored
+for some time. Both of these settings have a minimum of 1 as setting either to
+0 could render the server unusable.
+
+*** channelname and username
+These two settings allow you to configure a regular expression ([[http://doc.qt.io/qt-4.8/qregexp.html#characters-and-abbreviations-for-sets-of-characters][Qt regular expressions]]) of acceptable
+names for users and channels. This allows you very powerful control over names of objects on your
+servers - things like maximum and minimum username lengths, etc.
+
+Note that you must double-escape things like backslashes in the .ini, and that the .ini parser does
+weird things with things like curly braces unless you enclose the regular expression in quotes:
+#+begin_src conf
+;channelname=[ \\-=\\w\\#\\[\\]\\{\\}\\(\\)\\@\\|]+
+username=[ \\-=\\w\\[\\]\\{\\}\\(\\)\\@\\|\\.]+
+#+end_src
+
+** Server Registration
+#+begin_src conf
+registerName=The Lair
+;registerPassword=secret
+;registerUrl=http://www.mumble.info/
+; registerHostname=192.168.89.99
+;registerLocation=
+#+end_src
+
+#+begin_src conf
+[Ice]
+Ice.Warn.UnknownProperties=1
+Ice.MessageSizeMax=65536
+#+end_src

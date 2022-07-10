@@ -1,0 +1,6 @@
+#+title: Readme
+#+author: Eldwinster
+#+created: [2022-07-09 Sat 01:58]
+#+last_modified: [2022-07-09 Sat 02:00]
+
+This repository is a collection of all my project from summer 2022.
